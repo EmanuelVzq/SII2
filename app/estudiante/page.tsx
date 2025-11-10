@@ -168,6 +168,15 @@ export default function EstudiantePage() {
                 Ver calificaciones
               </button>
             </div>
+            <div className="mt-3 flex justify-end">
+             <button
+                 onClick={() => router.push("/kardex")}
+                 className="rounded-xl border px-5 py-2 text-sm font-medium bg-zinc-50 dark:bg-zinc-800 hover:bg-black/5 dark:hover:bg-white/10 transition"
+             >
+             Ver kardex
+             </button>
+            </div>
+
           </>
         )}
       </div>
