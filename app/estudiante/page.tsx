@@ -1,4 +1,3 @@
-// app/estudiante/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -10,7 +9,6 @@ type EstudianteData = {
   persona: string;
   email: string;
   semestre: number;
-  num_mat_rep_no_acreditadas: string;
   creditos_acumulados: string;
   promedio_ponderado: string;
   promedio_aritmetico: string;
@@ -19,8 +17,6 @@ type EstudianteData = {
   materias_aprobadas: string;
   creditos_complementarios: number;
   porcentaje_avance: number;
-  num_materias_rep_primera: number;
-  num_materias_rep_segunda: number | null;
   percentaje_avance_cursando: number;
   foto: string;
 };
@@ -31,17 +27,13 @@ export default function EstudiantePage() {
   const [data, setData] = useState<EstudianteData | null>(null);
   const router = useRouter();
 
-  // Carga automática al montar
   useEffect(() => {
-    let mounted = true;
-
     async function cargar() {
       setError(null);
       setData(null);
 
       const token = getToken();
       if (!token) {
-        // Si no hay token, ve al login (no es loop: aquí aún no se llamó a la API)
         router.replace("/login");
         return;
       }
@@ -50,19 +42,16 @@ export default function EstudiantePage() {
         const res = await fetch("/api/estudiante", {
           method: "GET",
           headers: {
-            "x-auth-token": token, // el proxy lo traducirá a Auth: Token: <token>
+            "x-auth-token": token,
             Accept: "application/json",
           },
           cache: "no-store",
         });
 
         if (!res.ok) {
-          // Si expira o es inválido, limpia y muestra mensaje (sin redirigir en automático para evitar loop)
           if (res.status === 401 || res.status === 403) {
             clearToken();
-            if (mounted) {
-              setError("Tu sesión expiró o es inválida. Vuelve a iniciar sesión.");
-            }
+            setError("Tu sesión expiró o es inválida. Vuelve a iniciar sesión.");
             return;
           }
           let msg = `HTTP ${res.status}`;
@@ -77,23 +66,24 @@ export default function EstudiantePage() {
         const payload = j?.data as EstudianteData | undefined;
         if (!payload) throw new Error("Respuesta sin 'data'");
 
-        if (mounted) setData(payload);
+        setData(payload);
       } catch (e: any) {
-        if (mounted) setError(e?.message ?? "Error desconocido");
+        setError(e?.message ?? "Error desconocido");
       } finally {
-        if (mounted) setLoading(false);
+        setLoading(false);
       }
     }
 
     cargar();
-    return () => {
-      mounted = false;
-    };
   }, [router]);
 
   function onLogout() {
     clearToken();
     router.replace("/login");
+  }
+
+  function goToCalificaciones() {
+    router.push("/calificaciones");
   }
 
   return (
@@ -127,38 +117,58 @@ export default function EstudiantePage() {
         )}
 
         {data && (
-          <div className="grid gap-4 md:grid-cols-2 mt-4">
-            <div className="space-y-2">
-              <Item k="Número de control" v={data.numero_control} />
-              <Item k="Nombre" v={data.persona} />
-              <Item k="Email" v={data.email} />
-              <Item k="Semestre" v={String(data.semestre)} />
-              <Item k="Créditos acumulados" v={data.creditos_acumulados} />
-              <Item k="Promedio ponderado" v={data.promedio_ponderado} />
-              <Item k="Promedio aritmético" v={data.promedio_aritmetico} />
-              <Item k="Materias cursadas" v={data.materias_cursadas} />
-              <Item k="Materias reprobadas" v={data.materias_reprobadas} />
-              <Item k="Materias aprobadas" v={data.materias_aprobadas} />
-              <Item k="Créditos complementarios" v={String(data.creditos_complementarios)} />
-              <Item k="Porcentaje de avance" v={`${data.porcentaje_avance}%`} />
-              <Item k="Rep. 1ra" v={String(data.num_materias_rep_primera)} />
-              <Item k="Rep. 2da" v={String(data.num_materias_rep_segunda ?? 0)} />
-              <Item k="Avance cursando" v={`${data.percentaje_avance_cursando}%`} />
+          <>
+            <div className="grid gap-4 md:grid-cols-2 mt-4">
+              <div className="space-y-2">
+                <Item k="Número de control" v={data.numero_control} />
+                <Item k="Nombre" v={data.persona} />
+                <Item k="Email" v={data.email} />
+                <Item k="Semestre" v={String(data.semestre)} />
+                <Item k="Créditos acumulados" v={data.creditos_acumulados} />
+                <Item k="Promedio ponderado" v={data.promedio_ponderado} />
+                <Item k="Promedio aritmético" v={data.promedio_aritmetico} />
+                <Item k="Materias cursadas" v={data.materias_cursadas} />
+                <Item k="Materias reprobadas" v={data.materias_reprobadas} />
+                <Item k="Materias aprobadas" v={data.materias_aprobadas} />
+                <Item
+                  k="Créditos complementarios"
+                  v={String(data.creditos_complementarios)}
+                />
+                <Item
+                  k="Porcentaje de avance"
+                  v={`${data.porcentaje_avance}%`}
+                />
+                <Item
+                  k="Avance cursando"
+                  v={`${data.percentaje_avance_cursando}%`}
+                />
+              </div>
+
+              <div className="flex flex-col items-center gap-3">
+                <p className="text-sm text-zinc-600 dark:text-zinc-400">Foto</p>
+                {data.foto ? (
+                  <img
+                    className="rounded-xl border max-w-xs"
+                    alt="Foto estudiante"
+                    src={`data:image/jpeg;base64,${data.foto}`}
+                  />
+                ) : (
+                  <div className="rounded-xl border p-6 text-sm text-zinc-500">
+                    Sin foto
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div className="flex flex-col items-center gap-3">
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">Foto</p>
-              {data.foto ? (
-                <img
-                  className="rounded-xl border max-w-xs"
-                  alt="Foto estudiante"
-                  src={`data:image/jpeg;base64,${data.foto}`}
-                />
-              ) : (
-                <div className="rounded-xl border p-6 text-sm text-zinc-500">Sin foto</div>
-              )}
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={goToCalificaciones}
+                className="rounded-xl border px-5 py-2 text-sm font-medium bg-zinc-50 dark:bg-zinc-800 hover:bg-black/5 dark:hover:bg-white/10 transition"
+              >
+                Ver calificaciones
+              </button>
             </div>
-          </div>
+          </>
         )}
       </div>
     </main>
