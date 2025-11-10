@@ -9,6 +9,7 @@ export default function Navbar() {
     { href: "/", label: "Inicio" },
     { href: "/horario", label: "Horario" },
     { href: "/calificaciones", label: "Calificaciones" },
+    { href: "/kardex", label: "KARDEX" },
   ];
 
   return (
