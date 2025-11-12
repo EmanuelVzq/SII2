@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getToken, clearToken } from "@/lib/auth";
 
+/* =================== Tipos =================== */
 type MateriaKardex = {
   nombre_materia: string;
   clave_materia: string;
@@ -24,6 +25,7 @@ type KardexResponse = {
   };
 };
 
+/* =================== Página =================== */
 export default function KardexPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -79,71 +81,160 @@ export default function KardexPage() {
     cargar();
   }, [router]);
 
+  // Agrupa por semestre y ordena por semestre ascendente
+  const grupos = useMemo(() => {
+    const bySem: Record<number, MateriaKardex[]> = {};
+    for (const m of kardex ?? []) {
+      const s = Number(m.semestre ?? 0) || 0;
+      if (!bySem[s]) bySem[s] = [];
+      bySem[s].push(m);
+    }
+    const sortedSems = Object.keys(bySem)
+      .map((k) => Number(k))
+      .sort((a, b) => a - b);
+    return sortedSems.map((sem) => ({
+      semestre: sem,
+      materias: bySem[sem],
+    }));
+  }, [kardex]);
+
   return (
-    <main className="min-h-screen flex items-center justify-center p-6 bg-zinc-50 dark:bg-black">
-      <div className="w-full max-w-5xl rounded-2xl border shadow-sm bg-white dark:bg-zinc-900 p-6">
+    <main className="min-h-screen bg-zinc-50">
+      <div className="w-full max-w-7xl mx-auto px-4 py-6">
         <header className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">
+          <h1 className="text-2xl font-semibold text-zinc-900">
             Kardex del estudiante
           </h1>
-          <nav className="flex items-center gap-3">
-            <a href="/estudiante" className="underline text-sm">Estudiante</a>
-            <a href="/calificaciones" className="underline text-sm">Calificaciones</a>
-            <a href="/" className="underline text-sm">Inicio</a>
-          </nav>
         </header>
 
         {loading && (
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">Cargando kardex...</p>
+          <p className="text-sm text-zinc-600">Cargando kardex...</p>
         )}
 
         {error && (
-          <div className="rounded-xl border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-300">
+          <div className="rounded-xl border border-red-300 bg-red-50 p-3 text-sm text-red-700">
             {error} <a href="/login" className="underline ml-2">Ir al login</a>
           </div>
         )}
 
         {avance !== null && (
-          <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">
-            <strong>Porcentaje de avance:</strong> {avance}%
-          </p>
-        )}
-
-        {kardex && kardex.length > 0 && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm border">
-              <thead className="bg-zinc-100 dark:bg-zinc-800/60">
-                <tr>
-                  <th className="p-2 text-left">Semestre</th>
-                  <th className="p-2 text-left">Clave</th>
-                  <th className="p-2 text-left">Materia</th>
-                  <th className="p-2 text-left">Créditos</th>
-                  <th className="p-2 text-left">Calificación</th>
-                  <th className="p-2 text-left">Periodo</th>
-                  <th className="p-2 text-left">Descripción</th>
-                </tr>
-              </thead>
-              <tbody>
-                {kardex.map((m, i) => (
-                  <tr key={i} className="border-t hover:bg-zinc-50 dark:hover:bg-zinc-800/40">
-                    <td className="p-2">{m.semestre}</td>
-                    <td className="p-2">{m.clave_materia}</td>
-                    <td className="p-2">{m.nombre_materia}</td>
-                    <td className="p-2">{m.creditos}</td>
-                    <td className="p-2">{m.calificacion ?? "—"}</td>
-                    <td className="p-2">{m.periodo}</td>
-                    <td className="p-2">{m.descripcion}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="mb-4">
+            <div className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2">
+              <span className="text-sm text-zinc-600">Porcentaje de avance</span>
+              <span className="text-sm font-semibold text-zinc-900">{avance}%</span>
+            </div>
           </div>
         )}
 
-        {!loading && !error && kardex?.length === 0 && (
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">Sin datos en el kardex.</p>
+        {!loading && !error && (!kardex || kardex.length === 0) && (
+          <p className="text-sm text-zinc-600">Sin datos en el kardex.</p>
         )}
+
+        {/* Secciones por semestre */}
+        {grupos.map((g) => (
+          <SemestreSection key={g.semestre} semestre={g.semestre} materias={g.materias} />
+        ))}
       </div>
     </main>
   );
+}
+
+/* =================== Secciones =================== */
+
+function SemestreSection({
+  semestre,
+  materias,
+}: {
+  semestre: number;
+  materias: MateriaKardex[];
+}) {
+  return (
+    <section className="rounded-2xl border border-zinc-200 bg-white p-4 mb-6">
+      <h2 className="text-lg font-semibold mb-3 text-zinc-900">
+        Semestre {semestre || "—"}
+      </h2>
+
+      {/* Dos columnas en md+ */}
+      <div className="grid gap-4 md:grid-cols-2">
+        {materias.map((m, idx) => (
+          <MateriaKardexCard key={idx} m={m} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function MateriaKardexCard({ m }: { m: MateriaKardex }) {
+  const cal = toNumber(m.calificacion);
+  const aprobado = cal !== null ? cal >= 70 : null; // cambia 70 por tu umbral
+  const title = (m.nombre_materia || "Materia").toUpperCase();
+  const subtitle = `${m.clave_materia} • ${m.periodo}`;
+
+  return (
+    <article className="rounded-xl border border-zinc-200 overflow-hidden bg-white">
+      {/* Header */}
+      <div className="p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-semibold text-zinc-900">{title}</h3>
+            <p className="text-xs text-zinc-600">{subtitle}</p>
+          </div>
+
+          {/* Pill de estado */}
+          {aprobado !== null && (
+            <span
+              className={
+                "inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium " +
+                (aprobado
+                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                  : "bg-red-50 text-red-700 border border-red-200")
+              }
+            >
+              <span
+                className={
+                  "h-2 w-2 rounded-full " + (aprobado ? "bg-emerald-600" : "bg-red-600")
+                }
+              />
+              {aprobado ? "Aprobado" : "Reprobado"}
+            </span>
+          )}
+        </div>
+
+        {/* Mini stats */}
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-2 text-center">
+            <div className="text-xs text-zinc-600">Créditos</div>
+            <div className="text-sm font-semibold text-zinc-900">
+              {toText(m.creditos)}
+            </div>
+          </div>
+          <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-2 text-center">
+            <div className="text-xs text-zinc-600">Calificación</div>
+            <div className="text-sm font-semibold text-zinc-900">
+              {cal ?? "—"}
+            </div>
+          </div>
+          <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-2 text-center">
+            <div className="text-xs text-zinc-600">Descripción</div>
+            <div className="text-sm font-semibold text-zinc-900 truncate" title={m.descripcion}>
+              {toText(m.descripcion)}
+            </div>
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+/* =================== Helpers =================== */
+function toText(v: unknown) {
+  if (v === null || v === undefined || v === "") return "—";
+  return String(v);
+}
+function toNumber(v: unknown): number | null {
+  if (v === null || v === undefined) return null;
+  const s = String(v).trim();
+  if (!s || s === "—" || s === "-") return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
 }
