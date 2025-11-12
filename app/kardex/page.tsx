@@ -31,6 +31,11 @@ export default function KardexPage() {
   const [error, setError] = useState<string | null>(null);
   const [kardex, setKardex] = useState<MateriaKardex[] | null>(null);
   const [avance, setAvance] = useState<number | null>(null);
+
+  // buscador por semestre
+  const [selectedSemester, setSelectedSemester] = useState<number | null>(null);
+  const [inputSemester, setInputSemester] = useState<string>("");
+
   const router = useRouter();
 
   useEffect(() => {
@@ -98,6 +103,30 @@ export default function KardexPage() {
     }));
   }, [kardex]);
 
+  // Opciones para el select (semestres disponibles)
+  const semesterOptions = useMemo(
+    () => grupos.map((g) => g.semestre),
+    [grupos]
+  );
+
+  // lista a renderizar según filtro
+  const gruposFiltrados = useMemo(() => {
+    if (selectedSemester === null) return grupos;
+    return grupos.filter((g) => g.semestre === selectedSemester);
+  }, [grupos, selectedSemester]);
+
+  // handlers buscador
+  const applyInputSearch = () => {
+    const n = Number(inputSemester);
+    if (Number.isFinite(n) && n > 0) {
+      setSelectedSemester(n);
+    }
+  };
+  const clearSearch = () => {
+    setSelectedSemester(null);
+    setInputSemester("");
+  };
+
   return (
     <main className="min-h-screen bg-zinc-50">
       <div className="w-full max-w-7xl mx-auto px-4 py-6">
@@ -126,14 +155,44 @@ export default function KardexPage() {
           </div>
         )}
 
+        {/* Buscador por semestre */}
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+          {/* Select con opciones detectadas */}
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-zinc-700">Semestre:</label>
+            <select
+              className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900"
+              value={selectedSemester ?? ""}
+              onChange={(e) =>
+                setSelectedSemester(e.target.value ? Number(e.target.value) : null)
+              }
+            >
+              <option value="">Todos</option>
+              {semesterOptions.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </div>
+          
+        </div>
+
         {!loading && !error && (!kardex || kardex.length === 0) && (
           <p className="text-sm text-zinc-600">Sin datos en el kardex.</p>
         )}
 
-        {/* Secciones por semestre */}
-        {grupos.map((g) => (
+        {/* Secciones por semestre (filtradas) */}
+        {gruposFiltrados.map((g) => (
           <SemestreSection key={g.semestre} semestre={g.semestre} materias={g.materias} />
         ))}
+
+        {/* Si hay filtro activo pero no hay resultados */}
+        {selectedSemester !== null && gruposFiltrados.length === 0 && (
+          <div className="mt-4 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700">
+            No hay materias registradas para el semestre {selectedSemester}.
+          </div>
+        )}
       </div>
     </main>
   );
