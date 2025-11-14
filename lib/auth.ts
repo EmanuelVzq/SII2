@@ -1,32 +1,26 @@
 // lib/auth.ts
 import { useRouter } from "next/navigation";
 
-let authToken: string | null = null;
+const TOKEN_KEY = "auth_token";
 
 export function setToken(token: string) {
-  authToken = token;
   if (typeof window !== "undefined") {
-    localStorage.setItem("auth_token", token);
+    localStorage.setItem(TOKEN_KEY, token);
   }
 }
 
 export function getToken(): string | null {
-  if (authToken) return authToken;
-  if (typeof window !== "undefined") {
-    authToken = localStorage.getItem("auth_token");
-    return authToken;
-  }
-  return null;
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(TOKEN_KEY);
 }
 
 export function clearToken() {
-  authToken = null;
   if (typeof window !== "undefined") {
-    localStorage.removeItem("auth_token");
+    localStorage.removeItem(TOKEN_KEY);
   }
 }
 
-// 🔥 función universal de logout seguro
+// opcional, si lo usas:
 export function handleAuthError(router: ReturnType<typeof useRouter>) {
   clearToken();
   router.push("/login");

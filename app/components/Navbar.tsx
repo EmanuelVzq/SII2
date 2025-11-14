@@ -10,17 +10,26 @@ export default function Navbar() {
   const router = useRouter();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
+  // rutas públicas donde no queremos navbar
+  const isPublicRoute = pathname === "/login" || pathname === "/";
+
   useEffect(() => {
-    // función para sincronizar estado con localStorage
     const syncAuth = () => {
       const token = getToken();
-      setIsLoggedIn(!!token);
+      const logged = !!token;
+      setIsLoggedIn(logged);
+
+      // si ya no hay token y estamos en ruta protegida -> mandar a login
+      if (!logged && !isPublicRoute) {
+        router.replace("/login");
+        router.refresh();
+      }
     };
 
     // leer token al montar
     syncAuth();
 
-    // escuchar cambios de auth_token en OTRAS pestañas
+    // escuchar cambios de auth_token en otras pestañas
     if (typeof window !== "undefined") {
       const handler = (e: StorageEvent) => {
         if (e.key === "auth_token") {
@@ -30,10 +39,7 @@ export default function Navbar() {
       window.addEventListener("storage", handler);
       return () => window.removeEventListener("storage", handler);
     }
-  }, []);
-
-  // rutas públicas donde no queremos navbar
-  const isPublicRoute = pathname === "/login" || pathname === "/";
+  }, [router, pathname, isPublicRoute]);
 
   if (isPublicRoute || !isLoggedIn) {
     return null;
