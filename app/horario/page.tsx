@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { getToken } from "@/lib/auth";
+import { getToken, clearToken } from "@/lib/auth";
+import { useRouter } from "next/navigation";
 import jsPDF from "jspdf";
 
 type Materia = {
@@ -22,6 +23,8 @@ type Materia = {
 };
 
 export default function HorarioPage() {
+  const router = useRouter();
+
   const [horario, setHorario] = useState<Materia[]>([]);
   const [periodo, setPeriodo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -30,15 +33,26 @@ export default function HorarioPage() {
   useEffect(() => {
     const fetchHorario = async () => {
       const token = getToken();
+
+      // ⛔️ Sin token → redirige a login
       if (!token) {
-        setError("No hay token guardado. Inicia sesión primero.");
-        setLoading(false);
+        router.replace("/login");
         return;
       }
+
       try {
         const res = await fetch("/api/horarios", {
           headers: { "x-auth-token": token },
+          cache: "no-store",
         });
+
+        // ⛔️ Token inválido/expirado → limpia y redirige
+        if (res.status === 401 || res.status === 403) {
+          clearToken();
+          router.replace("/login");
+          return;
+        }
+
         const data = await res.json();
         if (res.ok) {
           const materias = (data.data?.[0]?.horario || []) as Materia[];
@@ -54,18 +68,12 @@ export default function HorarioPage() {
         setLoading(false);
       }
     };
+
     fetchHorario();
-  }, []);
+  }, [router]);
 
   // ---- helpers de ordenamiento por hora ----
-  const days: (keyof Materia)[] = [
-    "lunes",
-    "martes",
-    "miercoles",
-    "jueves",
-    "viernes",
-    "sabado",
-  ];
+  const days: (keyof Materia)[] = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado"];
 
   function parseStartMinutes(range?: string | null): number | null {
     if (!range) return null;
@@ -73,14 +81,11 @@ export default function HorarioPage() {
     const time = head.split("-")[0]?.trim(); // "18:00"
     const m = /^(\d{1,2}):(\d{2})$/.exec(time || "");
     if (!m) return null;
-    const hh = Number(m[1]),
-      mm = Number(m[2]);
+    const hh = Number(m[1]), mm = Number(m[2]);
     if (!Number.isFinite(hh) || !Number.isFinite(mm)) return null;
     return hh * 60 + mm;
   }
-  function parseRange(
-    range?: string | null
-  ): { startMin: number; endMin: number } | null {
+  function parseRange(range?: string | null): { startMin: number; endMin: number } | null {
     if (!range) return null;
     const head = String(range).split("(")[0].trim(); // "15:00-17:00"
     const [a, b] = head.split("-").map((s) => s.trim());
@@ -105,9 +110,7 @@ export default function HorarioPage() {
     arr.sort((a, b) => {
       const sa = firstStart(a);
       const sb = firstStart(b);
-      if (sa === sb) {
-        return String(a.nombre_materia).localeCompare(String(b.nombre_materia));
-      }
+      if (sa === sb) return String(a.nombre_materia).localeCompare(String(b.nombre_materia));
       return sa - sb;
     });
     return arr;
@@ -127,19 +130,17 @@ export default function HorarioPage() {
     const textFont = 11;
 
     const palettes: [number, number, number][] = [
-      [243, 156, 18], // naranja
-      [52, 152, 219], // azul
-      [231, 76, 60], // rojo
-      [46, 204, 113], // verde
-      [155, 89, 182], // morado
-      [26, 188, 156], // turquesa
+      [243, 156, 18],  // naranja
+      [52, 152, 219],  // azul
+      [231, 76, 60],   // rojo
+      [46, 204, 113],  // verde
+      [155, 89, 182],  // morado
+      [26, 188, 156],  // turquesa
     ];
 
-    function parseRange(
-      range?: string | null
-    ): { startMin: number; endMin: number } | null {
+    function parseRangeLocal(range?: string | null): { startMin: number; endMin: number } | null {
       if (!range) return null;
-      const head = String(range).split("(")[0].trim(); // "15:00-17:00"
+      const head = String(range).split("(")[0].trim();
       const [a, b] = head.split("-").map((s) => s.trim());
       const ma = /^(\d{1,2}):(\d{2})$/.exec(a || "");
       const mb = /^(\d{1,2}):(\d{2})$/.exec(b || "");
@@ -164,32 +165,23 @@ export default function HorarioPage() {
       }
     }
 
-    // ---- agrupar por día ----
     type Slot = { nombre: string; range: string; start: number; end: number };
-
     const map: Record<string, Slot[]> = {
-      Lunes: [],
-      Martes: [],
-      Miércoles: [],
-      Jueves: [],
-      Viernes: [],
-      Sábado: [],
+      Lunes: [], Martes: [], Miércoles: [], Jueves: [], Viernes: [], Sábado: [],
     };
 
     (horario || []).forEach((m: any) => {
-      (
-        [
-          ["Lunes", "lunes", "lunes_clave_salon"],
-          ["Martes", "martes", "martes_clave_salon"],
-          ["Miércoles", "miercoles", "miercoles_clave_salon"],
-          ["Jueves", "jueves", "jueves_clave_salon"],
-          ["Viernes", "viernes", "viernes_clave_salon"],
-          ["Sábado", "sabado", "sabado_clave_salon"],
-        ] as const
-      ).forEach(([dia, key, keySalon]) => {
+      ([
+        ["Lunes", "lunes", "lunes_clave_salon"],
+        ["Martes", "martes", "martes_clave_salon"],
+        ["Miércoles", "miercoles", "miercoles_clave_salon"],
+        ["Jueves", "jueves", "jueves_clave_salon"],
+        ["Viernes", "viernes", "viernes_clave_salon"],
+        ["Sábado", "sabado", "sabado_clave_salon"],
+      ] as const).forEach(([dia, key, keySalon]) => {
         const rango = m[key] as string | null | undefined;
         if (!rango) return;
-        const parsed = parseRange(rango);
+        const parsed = parseRangeLocal(rango);
         if (!parsed) return;
 
         const salon = m[keySalon] ? ` ${m[keySalon]}` : "";
@@ -201,14 +193,10 @@ export default function HorarioPage() {
         });
       });
     });
-
-    // Ordenar por hora en cada día
     Object.keys(map).forEach((d) => map[d].sort((a, b) => a.start - b.start));
 
-    // ---- Render PDF ----
     let y = paddingY;
 
-    // Título y subtítulo
     doc.setTextColor(0, 0, 0);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(titleFont);
@@ -218,23 +206,14 @@ export default function HorarioPage() {
       doc.setFont("helvetica", "normal");
       doc.setFontSize(11);
       doc.setTextColor(0, 0, 0);
-      const sub = `${periodo?.descripcion_periodo ?? ""} — ${
-        periodo?.clave_periodo ?? ""
-      } (${periodo?.anio ?? ""})`;
+      const sub = `${periodo?.descripcion_periodo ?? ""} — ${periodo?.clave_periodo ?? ""} (${periodo?.anio ?? ""})`;
       doc.text(sub, paddingX, y + 18);
       y += 32;
     } else {
       y += 18;
     }
 
-    const dayOrder = [
-      "Lunes",
-      "Martes",
-      "Miércoles",
-      "Jueves",
-      "Viernes",
-      "Sábado",
-    ] as const;
+    const dayOrder = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"] as const;
 
     for (const dia of dayOrder) {
       const slots = map[dia];
@@ -242,16 +221,13 @@ export default function HorarioPage() {
 
       addPageIfNeeded(y + 30);
 
-      // Encabezado del día (asegura texto NEGRO)
       doc.setTextColor(0, 0, 0);
       doc.setFont("helvetica", "bold");
       doc.setFontSize(dayFont);
       doc.text(dia, paddingX, y);
       y += 10;
 
-      // Tarjetas
-      const cardH = 52;
-      const gap = 8;
+      const cardH = 52, gap = 8;
 
       for (let i = 0; i < slots.length; i++) {
         const s = slots[i];
@@ -259,25 +235,17 @@ export default function HorarioPage() {
 
         addPageIfNeeded(y + cardH + gap);
 
-        const rx = paddingX;
-        const ry = y;
-        const rw = pageW - paddingX * 2;
-        const rh = cardH;
+        const rx = paddingX, ry = y, rw = pageW - paddingX * 2, rh = cardH;
 
-        // Fondo de tarjeta
         doc.setFillColor(color[0], color[1], color[2]);
         doc.roundedRect(rx, ry, rw, rh, 8, 8, "F");
 
-        // Texto BLANCO dentro de la tarjeta
         doc.setTextColor(255, 255, 255);
-
-        // Horas (columna izquierda)
         doc.setFont("helvetica", "bold");
         doc.setFontSize(textFont);
         doc.text(time12(s.start), rx + 10, ry + 18);
         doc.text(time12(s.end), rx + 10, ry + 36);
 
-        // Contenido (materia + rango)
         const contentX = rx + 140;
         const maxW = rw - 150;
 
@@ -292,7 +260,7 @@ export default function HorarioPage() {
         y += rh + gap;
       }
 
-      y += 6; // respiro entre días
+      y += 6;
     }
 
     const nombre = `horario_${periodo?.clave_periodo ?? "periodo"}.pdf`;
@@ -304,11 +272,12 @@ export default function HorarioPage() {
     return (
       <main className="min-h-screen bg-zinc-50">
         <div className="w-full max-w-7xl mx-auto px-4 py-6">
-          <p className="text-gray-600">Cargando horario...</p>
+          <p className="text-gray-600">Cargando horario…</p>
         </div>
       </main>
     );
   }
+
   if (error) {
     return (
       <main className="min-h-screen bg-zinc-50">
@@ -325,14 +294,10 @@ export default function HorarioPage() {
     <main className="min-h-screen bg-zinc-50">
       <div className="w-full max-w-7xl mx-auto px-4 py-6">
         <section className="rounded-2xl border border-zinc-200 bg-white p-5">
-          <h2 className="text-2xl font-semibold mb-1 text-zinc-900">
-            Horario del estudiante
-          </h2>
+          <h2 className="text-2xl font-semibold mb-1 text-zinc-900">Horario del estudiante</h2>
           {periodo && (
             <p className="text-sm text-zinc-600 mb-4">
-              <span className="font-semibold text-zinc-800">
-                {periodo.descripcion_periodo}
-              </span>{" "}
+              <span className="font-semibold text-zinc-800">{periodo.descripcion_periodo}</span>{" "}
               — {periodo.clave_periodo} ({periodo.anio})
             </p>
           )}
@@ -353,99 +318,56 @@ export default function HorarioPage() {
               </thead>
               <tbody className="text-zinc-900">
                 {horarioOrdenado.map((materia) => (
-                  <tr
-                    key={String(materia.id_grupo)}
-                    className="hover:bg-zinc-50"
-                  >
-                    <td className="p-3 border border-zinc-200 font-medium">
-                      {materia.nombre_materia}
-                    </td>
-                    <td className="p-3 border border-zinc-200 text-zinc-700">
-                      {materia.clave_materia}
-                    </td>
+                  <tr key={String(materia.id_grupo)} className="hover:bg-zinc-50">
+                    <td className="p-3 border border-zinc-200 font-medium">{materia.nombre_materia}</td>
+                    <td className="p-3 border border-zinc-200 text-zinc-700">{materia.clave_materia}</td>
                     <td className="p-3 border border-zinc-200">
                       {materia.lunes ? (
                         <>
                           {materia.lunes}{" "}
-                          {materia.lunes_clave_salon && (
-                            <span className="text-zinc-500">
-                              ({materia.lunes_clave_salon})
-                            </span>
-                          )}
+                          {materia.lunes_clave_salon && <span className="text-zinc-500">({materia.lunes_clave_salon})</span>}
                         </>
-                      ) : (
-                        <span className="text-zinc-500">—</span>
-                      )}
+                      ) : (<span className="text-zinc-500">—</span>)}
                     </td>
                     <td className="p-3 border border-zinc-200">
                       {materia.martes ? (
                         <>
                           {materia.martes}{" "}
-                          {materia.martes_clave_salon && (
-                            <span className="text-zinc-500">
-                              ({materia.martes_clave_salon})
-                            </span>
-                          )}
+                          {materia.martes_clave_salon && <span className="text-zinc-500">({materia.martes_clave_salon})</span>}
                         </>
-                      ) : (
-                        <span className="text-zinc-500">—</span>
-                      )}
+                      ) : (<span className="text-zinc-500">—</span>)}
                     </td>
                     <td className="p-3 border border-zinc-200">
                       {materia.miercoles ? (
                         <>
                           {materia.miercoles}{" "}
-                          {materia.miercoles_clave_salon && (
-                            <span className="text-zinc-500">
-                              ({materia.miercoles_clave_salon})
-                            </span>
-                          )}
+                          {materia.miercoles_clave_salon && <span className="text-zinc-500">({materia.miercoles_clave_salon})</span>}
                         </>
-                      ) : (
-                        <span className="text-zinc-500">—</span>
-                      )}
+                      ) : (<span className="text-zinc-500">—</span>)}
                     </td>
                     <td className="p-3 border border-zinc-200">
                       {materia.jueves ? (
                         <>
                           {materia.jueves}{" "}
-                          {materia.jueves_clave_salon && (
-                            <span className="text-zinc-500">
-                              ({materia.jueves_clave_salon})
-                            </span>
-                          )}
+                          {materia.jueves_clave_salon && <span className="text-zinc-500">({materia.jueves_clave_salon})</span>}
                         </>
-                      ) : (
-                        <span className="text-zinc-500">—</span>
-                      )}
+                      ) : (<span className="text-zinc-500">—</span>)}
                     </td>
                     <td className="p-3 border border-zinc-200">
                       {materia.viernes ? (
                         <>
                           {materia.viernes}{" "}
-                          {materia.viernes_clave_salon && (
-                            <span className="text-zinc-500">
-                              ({materia.viernes_clave_salon})
-                            </span>
-                          )}
+                          {materia.viernes_clave_salon && <span className="text-zinc-500">({materia.viernes_clave_salon})</span>}
                         </>
-                      ) : (
-                        <span className="text-zinc-500">—</span>
-                      )}
+                      ) : (<span className="text-zinc-500">—</span>)}
                     </td>
                     <td className="p-3 border border-zinc-200">
                       {materia.sabado ? (
                         <>
                           {materia.sabado}{" "}
-                          {materia.sabado_clave_salon && (
-                            <span className="text-zinc-500">
-                              ({materia.sabado_clave_salon})
-                            </span>
-                          )}
+                          {materia.sabado_clave_salon && <span className="text-zinc-500">({materia.sabado_clave_salon})</span>}
                         </>
-                      ) : (
-                        <span className="text-zinc-500">—</span>
-                      )}
+                      ) : (<span className="text-zinc-500">—</span>)}
                     </td>
                   </tr>
                 ))}
