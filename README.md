@@ -151,3 +151,7 @@ La aplicación está optimizada para desplegar en [Vercel](https://vercel.com) (
 ## 👥 Colaboradores
 
 - Rube123 (nuevo colaborador del proyecto)
+
+## Captura
+![Descripción](public/image.png)
+![Interfaz](public/image2.png)
