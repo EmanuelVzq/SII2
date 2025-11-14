@@ -102,14 +102,7 @@ export default function CalificacionesPage() {
       <div className="w-full max-w-7xl mx-auto px-4 py-6">
         <header className="flex items-center justify-between gap-3 mb-4">
           <h1 className="text-2xl font-semibold text-zinc-900">Calificaciones</h1>
-          <nav className="flex items-center gap-3">
-            <a className="underline text-sm text-zinc-700" href="/estudiante">
-              Estudiante
-            </a>
-            <a className="underline text-sm text-zinc-700" href="/">
-              Inicio
-            </a>
-          </nav>
+          
         </header>
 
         {loading && (
