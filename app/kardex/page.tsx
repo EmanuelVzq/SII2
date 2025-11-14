@@ -183,27 +183,7 @@ export default function KardexPage() {
         )}
 
         {/* Buscador por semestre */}
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-          {/* Select con opciones detectadas */}
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-zinc-700">Semestre:</label>
-            <select
-              className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900"
-              value={selectedSemester ?? ""}
-              onChange={(e) =>
-                setSelectedSemester(e.target.value ? Number(e.target.value) : null)
-              }
-            >
-              <option value="">Todos</option>
-              {semesterOptions.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-          </div>
-          
-        </div>
+        
 
         {!loading && !error && (!kardex || kardex.length === 0) && (
           <p className="text-sm text-zinc-600">Sin datos en el kardex.</p>
