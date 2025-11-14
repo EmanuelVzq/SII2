@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getToken, clearToken } from "@/lib/auth";
 
-/* =================== Tipos =================== */
 type MateriaKardex = {
   nombre_materia: string;
   clave_materia: string;
@@ -25,12 +24,15 @@ type KardexResponse = {
   };
 };
 
-/* =================== Página =================== */
 export default function KardexPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [kardex, setKardex] = useState<MateriaKardex[] | null>(null);
   const [avance, setAvance] = useState<number | null>(null);
+
+  // estado del filtro por semestre (null = todos)
+  const [selectedSemester, setSelectedSemester] = useState<number | null>(null);
+
   const router = useRouter();
 
   useEffect(() => {
@@ -98,6 +100,18 @@ export default function KardexPage() {
     }));
   }, [kardex]);
 
+  // Semestres disponibles para el combo
+  const semesterOptions = useMemo(
+    () => grupos.map((g) => g.semestre),
+    [grupos]
+  );
+
+  // Grupos filtrados por el combo
+  const gruposFiltrados = useMemo(() => {
+    if (selectedSemester === null) return grupos;
+    return grupos.filter((g) => g.semestre === selectedSemester);
+  }, [grupos, selectedSemester]);
+
   return (
     <main className="min-h-screen bg-zinc-50">
       <div className="w-full max-w-7xl mx-auto px-4 py-6">
@@ -118,10 +132,32 @@ export default function KardexPage() {
         )}
 
         {avance !== null && (
-          <div className="mb-4">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2">
               <span className="text-sm text-zinc-600">Porcentaje de avance</span>
               <span className="text-sm font-semibold text-zinc-900">{avance}%</span>
+            </div>
+
+            {/* Combobox de semestres */}
+            <div className="flex items-center gap-2">
+              <label htmlFor="semCombo" className="text-sm text-zinc-700">
+                Filtrar por semestre:
+              </label>
+              <select
+                id="semCombo"
+                className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900"
+                value={selectedSemester ?? ""}
+                onChange={(e) =>
+                  setSelectedSemester(e.target.value ? Number(e.target.value) : null)
+                }
+              >
+                <option value="">Todos</option>
+                {semesterOptions.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
         )}
@@ -130,8 +166,8 @@ export default function KardexPage() {
           <p className="text-sm text-zinc-600">Sin datos en el kardex.</p>
         )}
 
-        {/* Secciones por semestre */}
-        {grupos.map((g) => (
+        {/* Secciones por semestre (filtradas) */}
+        {gruposFiltrados.map((g) => (
           <SemestreSection key={g.semestre} semestre={g.semestre} materias={g.materias} />
         ))}
       </div>
