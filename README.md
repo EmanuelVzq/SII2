@@ -151,6 +151,7 @@ La aplicación está optimizada para desplegar en [Vercel](https://vercel.com) (
 ## 👥 Colaboradores
 
 - Rube123 (nuevo colaborador del proyecto)
+- EmmaVzq (The GOAT)
 
 ## Captura
 ![Descripción](public/image.png)
