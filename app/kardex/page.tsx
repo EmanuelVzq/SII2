@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getToken, clearToken } from "@/lib/auth";
 
-/* =================== Tipos =================== */
 type MateriaKardex = {
   nombre_materia: string;
   clave_materia: string;
@@ -25,14 +24,12 @@ type KardexResponse = {
   };
 };
 
-/* =================== Página =================== */
 export default function KardexPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [kardex, setKardex] = useState<MateriaKardex[] | null>(null);
   const [avance, setAvance] = useState<number | null>(null);
 
-  // buscador por semestre
   const [selectedSemester, setSelectedSemester] = useState<number | null>(null);
   const [inputSemester, setInputSemester] = useState<string>("");
 
@@ -86,7 +83,6 @@ export default function KardexPage() {
     cargar();
   }, [router]);
 
-  // Agrupa por semestre y ordena por semestre ascendente
   const grupos = useMemo(() => {
     const bySem: Record<number, MateriaKardex[]> = {};
     for (const m of kardex ?? []) {
@@ -103,13 +99,11 @@ export default function KardexPage() {
     }));
   }, [kardex]);
 
-  // Opciones para el select (semestres disponibles)
   const semesterOptions = useMemo(
     () => grupos.map((g) => g.semestre),
     [grupos]
   );
 
-  // lista a renderizar según filtro
   const gruposFiltrados = useMemo(() => {
     if (selectedSemester === null) return grupos;
     return grupos.filter((g) => g.semestre === selectedSemester);
@@ -198,8 +192,6 @@ export default function KardexPage() {
   );
 }
 
-/* =================== Secciones =================== */
-
 function SemestreSection({
   semestre,
   materias,
@@ -285,7 +277,6 @@ function MateriaKardexCard({ m }: { m: MateriaKardex }) {
   );
 }
 
-/* =================== Helpers =================== */
 function toText(v: unknown) {
   if (v === null || v === undefined || v === "") return "—";
   return String(v);
